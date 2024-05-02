@@ -1,7 +1,10 @@
-
+'use client';
 import classes from "./page.module.css";
 import ImageSlideshow from "@/components/images-slideshow/images-slideshow";
 import Link from "next/link";
+import Notification from "@/components/notification/notification";
+import RootLayout from "@/app/layout";
+import {NotificationContextProvider} from "@/store/notification-context";
 
 export default function Home() {
   return (

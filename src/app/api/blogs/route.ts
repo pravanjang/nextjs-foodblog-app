@@ -7,4 +7,5 @@ export async function GET(request: Request) {
     } catch (err) {
         return NextResponse.json({ error: 'failed to fetch data' }, { status: 500 });
     }
+
 }

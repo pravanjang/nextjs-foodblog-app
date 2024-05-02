@@ -24,12 +24,17 @@ type Subscriber = {
     modifieddate: Date
 }
 
-type Blogs = {
+type Blog = {
+    id ?: string
     blogname: string,
     title: string,
+    description: string,
+    image_url: string,
     bloggerId: string,
     bloggerName: string,
-    content: string,
+    content?: string,
+    ratings: number
+    createdDate: Date,
 }
 /**********************************************************************************************************
  *       Functions to insert, update, delete, find operation on  subscriberCOll collection
@@ -146,3 +151,133 @@ export async function getSubscriber( id: string, passwd ?: string): Promise<any>
 /**********************************************************************************************************
  *           Functions to insert, update, delete, find operation on  blogsCollection collection
  * ********************************************************************************************************/
+
+/*
+* This function inserts document to the collection
+*
+* @function
+* @async
+* @param {Blog} blog - Object containing details of the blog
+* @return {Promise<Blog>} A promise which resolves to Subscriber object containing new "id"
+*                               and rejects with error message in case of failure.
+ */
+export async function addBlog(blog: Blog): Promise<any> {
+    client.connect()
+        .then( async connectedClient => {
+            const db = connectedClient.db(dbName);
+            const {acknowledged, insertedId} = await db.collection(blogsCollection).insertOne(blog);
+            await client.close();
+            if(acknowledged){
+                return Promise.resolve({status:"success", subscriber: {id: insertedId.toString() , ...blog} });
+            }else{
+                return Promise.reject({status: "error", error: "Insert Error", logmessage: "Failed to insert document into database"});
+            }
+
+        })
+        .catch(error => {
+            return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
+        });
+}
+
+/*
+* This function deletes document on the collection
+*
+* @function
+* @async
+* @param {string}  blog's unique id
+* @return {Promise<number>} A promise which resolves to number of document deleted
+*                               and rejects with error message in case of failure.
+ */
+export async function  deleteBlog(blogid:string): Promise<any> {
+    client.connect()
+        .then( async connectedClient => {
+            const db = connectedClient.db(dbName);
+            const query = { _id: new ObjectId(blogid) };
+            const {acknowledged, deletedCount} = await db.collection(blogsCollection).deleteOne(query);
+            if(acknowledged && deletedCount){
+                return Promise.resolve({status:"success", deletedCount: deletedCount});
+            }else{
+                return Promise.reject({status: "error", error: "Deletion Error", logmessage: "Failed to delete subscription"});
+            }
+        }).catch(error => {
+        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
+    });
+}
+
+/*
+* This function updates document of the collection
+*
+* @function
+* @async
+* @param {Blog} blog - Object containing details of the subscriber
+* @return {Promise<number>} A promise which resolves to number of document updated
+*                               and rejects with error message in case of failure.
+ */
+export async function modifyBlog( blog: Blog): Promise<any> {
+    client.connect()
+        .then( async connectedClient => {
+            const db = connectedClient.db(dbName);
+            const query = { _id: new ObjectId(blog.id) };
+            const {acknowledged, modifiedCount} = await db.collection(subscriberCOll).updateOne(query, {$set: blog} );
+            if(acknowledged && modifiedCount){
+                return Promise.resolve({status:"success", modifiedCount: modifiedCount});
+            }else{
+                return Promise.reject({status: "error", error: "Updation Error", logmessage: "Failed to update subscription"});
+            }
+        }).catch(error => {
+        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
+    });
+}
+
+/*
+* This function retrieves document from the collection
+*
+* @function
+* @async
+* @param {string} id - id of the Blog
+* @return {Promise<Blog>} A promise which resolves to Blog object
+*                         and rejects with error message in case of failure.
+ */
+export async function getBlog( id: string): Promise<any> {
+    client.connect()
+        .then( async connectedClient => {
+            const db = connectedClient.db(dbName);
+            const query = { _id: new ObjectId(id) };
+            const blog = await db.collection(subscriberCOll).findOne(query);
+            if(blog){
+                return Promise.resolve({status:"success", blog: blog});
+            }else{
+                return Promise.reject({status: "error", error: "Updation Error", logmessage: "Couldn't found subscriber"});
+            }
+        }).catch(error => {
+        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
+    });
+}
+
+/*
+* This function retrieves documents from the collection
+*
+* @function
+* @async
+* @param {number} skip - how many number of documents from the beginning must be ignored.
+* @param {number} limit - maximum number of documents should be returned
+* @return {Promise<Blog>} A promise which resolves to Blog objects
+*                         and rejects with error message in case of failure.
+ */
+export async function getBlogs(  skip: number, limit: number): Promise<any> {
+    client.connect()
+        .then( async connectedClient => {
+            const db = connectedClient.db(dbName);
+            const blogs = await db.collection(subscriberCOll).find({},
+                                                                        {projection: {content: 0},
+                                                                                    skip: skip,
+                                                                                limit: limit || 1}).toArray();
+            if(blogs){
+                return Promise.resolve({status:"success", blogs: blogs});
+            }else{
+                return Promise.reject({status: "error", error: "Updation Error", logmessage: "Couldn't found subscriber"});
+            }
+        }).catch(error => {
+        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
+    });
+}
