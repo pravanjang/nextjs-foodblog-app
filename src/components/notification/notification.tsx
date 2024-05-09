@@ -7,10 +7,8 @@ import {NotificationContext} from '@/store/notification-context';
 function Notification() {
     const notificationCtx: any = useContext(NotificationContext);
 
-    //const notificationCtx = useNotificationContext();
-
     console.log("Notification: ",notificationCtx);
-    //const notification = notificationCtx.notification;
+
     if (!notificationCtx) {
         console.log("Notification context is null");
         return <></>;

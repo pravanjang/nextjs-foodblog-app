@@ -1,27 +1,45 @@
 import {MongoClient, ObjectId } from 'mongodb';
-import {Simulate} from "react-dom/test-utils";
-import error = Simulate.error;
+import * as crypto from "node:crypto";
 
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const options = {};
+const username = encodeURIComponent("fbadmin");
+const password = encodeURIComponent("my_password");
+const clusterUrl = process.env.MONGODB_URI || 'localhost:27017';
 const dbName = "foodblogdb";
+const salt: string = "1234567890";
+
+//const authMechanism = "DEFAULT";
+
+if(!clusterUrl){
+    throw new Error("$MONGODB_URI is missing");
+}
+
+const uri = `mongodb://${username}:${password}@${clusterUrl}/${dbName}`;            /*?authMechanism=${authMechanism};*/
+const options = process.env.NODE_ENV === 'development' ? {monitorCommands:true} : {};
 
 const subscriberCOll = "subscribers";
 const blogsCollection = "blogs";
 
-if(!uri){
-    throw new Error("$MONGODB_URI is missing");
-}
-
 const client = new MongoClient(uri, options);
+
+if (process.env.NODE_ENV === 'development') {
+    client.on('commandStarted', (event) => console.debug(event));
+    client.on('commandSucceeded', (event) => console.debug(JSON.stringify(event.reply)));
+    client.on('commandFailed', (event) => console.debug(event));
+}
 
 type Subscriber = {
     id ?: string,
     name: string,
-    mailid: string,
-    password ?: string,
-    creationdate: Date,
-    modifieddate: Date
+    email: string,
+    about: string,
+    authdetails: {
+        password ?: string,
+        account_type: [],
+        auth_type: string,
+        auth_id: string
+    }
+    creationdate?: Date,
+    modifieddate?: Date
 }
 
 type Blog = {
@@ -36,6 +54,7 @@ type Blog = {
     ratings: number
     createdDate: Date,
 }
+
 /**********************************************************************************************************
  *       Functions to insert, update, delete, find operation on  subscriberCOll collection
  * ********************************************************************************************************/
@@ -49,22 +68,31 @@ type Blog = {
 * @return {Promise<Subscriber>} A promise which resolves to Subscriber object containing new "id"
 *                               and rejects with error message in case of failure.
  */
-export async function addSubscriber(subscriber: Subscriber): Promise<any> {
-    client.connect()
-        .then( async connectedClient => {
-            const db = connectedClient.db(dbName);
-            const {acknowledged, insertedId} = await db.collection(subscriberCOll).insertOne(subscriber);
-            await client.close();
-            if(acknowledged){
-                return Promise.resolve({status:"success", subscriber: {id: insertedId.toString() , ...subscriber} });
-            }else{
-                return Promise.reject({status: "error", error: "Insert Error", logmessage: "Failed to insert document into database"});
-            }
-
-        })
-        .catch(error => {
-            return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
-        });
+export async function addSubscriber( isubscriber: Readonly<Subscriber> ): Promise<any> {
+    let subscriber = isubscriber;
+    try {
+        await client.connect();
+        const db = client.db(dbName);
+        const hashPassword = crypto.pbkdf2Sync(subscriber.authdetails.password as crypto.BinaryLike, salt, 100, 64, 'sha512' )
+        console.log("addSubscriber: database successfully connected - ", db.databaseName);
+        subscriber.authdetails.password = hashPassword.toString();
+        const {acknowledged, insertedId} = await db.collection(subscriberCOll).insertOne({createdDate: new Date(),...subscriber});
+        await client.close();
+        if (acknowledged) {
+            //Hashed value shouldn't go beyond this point
+            delete subscriber.authdetails.password;
+            return {status: "success", subscriber: {id: insertedId.toString(), ...subscriber}};
+        } else {
+            return {
+                status: "error",
+                error: "Insert Error",
+                logmessage: "Failed to insert document into database"
+            };
+        }
+    } catch (error: any) {
+        console.log("addSubscriber: error occurred while connecting db: ", error.message);
+        throw error;
+    }
 }
 
 /*
