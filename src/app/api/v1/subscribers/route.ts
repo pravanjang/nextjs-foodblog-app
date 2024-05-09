@@ -1,11 +1,22 @@
 import {NextResponse} from "next/server";
-import {addSubscriber} from "@/lib/dbconnection";
+import {addSubscriber, getSubscribers} from "@/lib/dbconnection";
 
 export async function GET(request: Request) {
-
     try {
-        return NextResponse.json({ "message": "Hello World!"},  { status: 200 });
+        return await new Promise((resolve, reject) => {
+            getSubscribers(0, 50).then(subscribers => {
+                if (subscribers) {
+                    resolve(NextResponse.json({...subscribers}, {status: 200}));
+                }else{
+                    console.error("This shouldn't happen");
+                    reject(NextResponse.json({ error: 'failed to fetch data' }, { status: 500 }));
+                }
+            }).catch(error => {
+                reject( NextResponse.json({ error: error }, { status: 500 }));
+            });
+        });
     } catch (err) {
+        console.error("Error getting list of subscribers", err);
         return NextResponse.json({ error: 'failed to fetch data' }, { status: 500 });
     }
 }
