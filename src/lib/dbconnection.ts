@@ -74,7 +74,7 @@ export async function addSubscriber(isubscriber: Readonly<Subscriber>): Promise<
     try {
         await client.connect();
         const db = client.db(dbName);
-        const hashPassword = crypto.pbkdf2Sync(subscriber.authdetails.password as crypto.BinaryLike, salt, 100, 64, 'sha512')
+        const hashPassword = crypto.pbkdf2Sync(subscriber.authdetails.password as crypto.BinaryLike, salt, 100, 64, 'sha512');
         console.log("addSubscriber: database successfully connected - ", db.databaseName);
         subscriber.authdetails.password = hashPassword.toString();
         subscriber.emailValidated = false;
@@ -85,7 +85,9 @@ export async function addSubscriber(isubscriber: Readonly<Subscriber>): Promise<
         await client.close();
         if (acknowledged) {
             //Hashed value shouldn't go beyond this point
-            delete subscriber.authdetails.password;
+            if(subscriber.authdetails.password){
+                delete subscriber.authdetails.password;
+            }
             return {status: "success", subscriber: {id: insertedId.toString(), ...subscriber}};
         } else {
             return {
@@ -171,29 +173,38 @@ export async function modifySubscriber(subscriber: Subscriber): Promise<any> {
 * @return {Promise<Subscriber>} A promise which resolves to Subscriber object
 *                               and rejects with error message in case of failure.
  */
-export async function getSubscriber(id: string, passwd ?: string): Promise<any> {
-    client.connect()
-        .then(async connectedClient => {
-            const db = connectedClient.db(dbName);
-            let query;
-            if (passwd !== undefined && passwd !== null) {
-                query = {_id: new ObjectId(id), password: passwd};
-            } else {
-                query = {_id: new ObjectId(id)};
-            }
-            const subscriber = await db.collection(subscriberCOll).findOne(query, {projection: {password: 0}});
-            if (subscriber) {
-                return Promise.resolve({status: "success", subscriber: subscriber});
-            } else {
-                return Promise.reject({
-                    status: "error",
-                    error: "Updation Error",
-                    logmessage: "Couldn't found subscriber"
-                });
-            }
-        }).catch(error => {
-        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
-    });
+export async function getSubscriber(emailid: string, passwd ?: string): Promise<any> {
+    try{
+        return await new Promise((resolve, reject) => {
+            client.connect()
+                .then(async connectedClient => {
+                    const db = connectedClient.db(dbName);
+                    let query;
+                    if (passwd !== undefined && passwd !== null) {
+                        const hashPassword = crypto.pbkdf2Sync(passwd as crypto.BinaryLike, salt, 100, 64, 'sha512');
+                        query = {email: emailid, 'authdetails.password': hashPassword.toString()};
+                    } else {
+                        query = {email: emailid};
+                    }
+                    const subscriber = await db.collection(subscriberCOll).findOne(query, {projection: {'authdetails.password': 0}});
+                    if (subscriber) {
+                        resolve({status: "success", subscriber: subscriber});
+                    } else {
+                        resolve({
+                            status: "failed",
+                            logmessage: "Couldn't found subscriber"
+                        });
+                    }
+                }).catch(error => {
+                    console.error("connection error: ", error);
+                    reject({status: "error", error: error, logmessage: "Failed to connect database"});
+            });
+        });
+    }catch (err){
+        console.error("Error while getting the subscriber details ", err);
+        throw err;
+    }
+
 }
 
 /*
