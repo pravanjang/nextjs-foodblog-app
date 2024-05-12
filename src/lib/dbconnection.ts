@@ -132,6 +132,32 @@ export async function deleteSubscriber(subscriberid: string): Promise<any> {
     });
 }
 
+export async function changeSubscriberPasswd(emailid: string, newpasswd: string, oldpasswd ?: string ): Promise<any> {
+    try {
+        return await new Promise(async (resolve, reject) => {
+            client.connect().then(async (connectedClient) => {
+                const db = connectedClient.db(dbName);
+                let query;
+                const hashNewpasswd = crypto.pbkdf2Sync(newpasswd as crypto.BinaryLike, salt, 100, 64, 'sha512');
+                if(oldpasswd){
+                    const hashOldpasswd = crypto.pbkdf2Sync(oldpasswd as crypto.BinaryLike, salt, 100, 64, 'sha512');
+                    query = {email: emailid, 'authdetails.password': hashOldpasswd.toString()};
+                }else{
+                    query =    {email: emailid};
+                }
+                const result = await db.collection<Subscriber>(subscriberCOll).updateOne(query, {$set: {'authdetails.password': hashNewpasswd.toString() }} , {upsert: false});
+                console.log("changeSubscriberPasswd:", result);
+                resolve(result);
+            }).catch(err =>{
+                reject(err);
+            }).catch(error => reject(error));
+        });
+    }catch(error) {
+        console.error("Error: ", error);
+        throw error;
+    }
+}
+
 export async function addRolesSubscriber(emailid: string, roles: string[] ): Promise<any> {
     try {
         return await new Promise(async (resolve, reject) => {

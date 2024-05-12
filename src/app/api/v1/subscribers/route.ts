@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {
     addRolesSubscriber,
-    addSubscriber,
+    addSubscriber, changeSubscriberPasswd,
     deleteRolesSubscriber,
     getSubscriber,
     getSubscribers
@@ -84,21 +84,20 @@ export async function PATCH(request: Request): Promise<NextResponse> {
                     switch(command) {
                         case 'ChangePassword':
                             const {oldPassword, newPassword} = data;
-                            //Verify old password is correct one
-                            getSubscriber(email, oldPassword).then(rtnResult => {
+                            changeSubscriberPasswd(email, newPassword, oldPassword).then(rtnResult => {
                                 if( rtnResult === 'undefined' || !rtnResult) {
                                     console.error("Error: This shouldn't happen ");
                                     reject(NextResponse.json({ error: 'failed to verify password' }, { status: 500 }));
                                 }else{
-                                    if(rtnResult.status === "failed") {
+                                    if(rtnResult.modifiedCount == 0) {
                                         console.error("Error: old password verification failed");
                                         resolve(NextResponse.json({ error: 'Change password failed' }, { status: 400 }));
-                                    }else{
-                                        //change password
+                                    }else if(rtnResult.modifiedCount == 1) {
                                         resolve(NextResponse.json({ message: "Password changed" }, { status: 200 }));
+                                    }else {
+                                        resolve(NextResponse.json({ message: rtnResult.modifiedCount+" accounts password changed" }, { status: 200 }));
                                     }
                                 }
-                                //resolve(NextResponse.json({ message: 'user updated' }, { status: 200 }));
                                 }).catch(error => reject(error));
                             break;
                         case 'AddRoles':
