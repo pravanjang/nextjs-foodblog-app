@@ -1,9 +1,6 @@
 import {NextResponse} from "next/server";
 import {getSubscriber} from "@/lib/dbconnection";
-import jwt from "jsonwebtoken";
-
-
-const jws_secret =  process.env.JWT_SECRET || "test_secret" ;
+import {createJWT} from "@/lib/apptoken";
 
 export async function POST(request: Request): Promise<any> {
     try{
@@ -19,11 +16,7 @@ export async function POST(request: Request): Promise<any> {
                         resolve(NextResponse.json({ status: 'failed', error: 'failed to login' }, { status: 401 }));
                     }else{
                         const result = rtnResult.subscriber;
-                        const token = jwt.sign({
-                            name: result.name,
-                            email: result.email,
-                            account: result.authdetails.account_type
-                        }, jws_secret, {expiresIn: '7d'});
+                        const token = createJWT(result._id, result.name, result.email, result.authdetails.account_type);
                         resolve(NextResponse.json({ status: 'success', token: token }, { status: 201 }));
                     }
                 }

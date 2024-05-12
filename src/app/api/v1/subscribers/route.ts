@@ -1,5 +1,12 @@
 import {NextResponse} from "next/server";
-import {addSubscriber, getSubscribers} from "@/lib/dbconnection";
+import {
+    addRolesSubscriber,
+    addSubscriber,
+    deleteRolesSubscriber,
+    getSubscriber,
+    getSubscribers
+} from "@/lib/dbconnection";
+import {createJWT, verifyToken} from "@/lib/apptoken";
 
 export async function GET(request: Request) {
     try {
@@ -58,5 +65,95 @@ export async function POST(request: Request) {
     } catch (err) {
         console.error("POST: error while creating user: ", err);
         return NextResponse.json({ error: 'failed to create user' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    try{
+        const authorization  = request.headers.get('authorization');
+        if (!authorization) {
+            return NextResponse.json({ message: 'Unauthorised' }, { status: 401 });
+        }
+        const token = authorization.split(" ")[1];
+        const jwtDecodedToken: any = verifyToken(token);
+        if(jwtDecodedToken){
+            return await new Promise((resolve, reject) => {
+                request.json().then(bodyData => {
+                    const {command, data} = bodyData;
+                    const email = jwtDecodedToken.email;
+                    switch(command) {
+                        case 'ChangePassword':
+                            const {oldPassword, newPassword} = data;
+                            //Verify old password is correct one
+                            getSubscriber(email, oldPassword).then(rtnResult => {
+                                if( rtnResult === 'undefined' || !rtnResult) {
+                                    console.error("Error: This shouldn't happen ");
+                                    reject(NextResponse.json({ error: 'failed to verify password' }, { status: 500 }));
+                                }else{
+                                    if(rtnResult.status === "failed") {
+                                        console.error("Error: old password verification failed");
+                                        resolve(NextResponse.json({ error: 'Change password failed' }, { status: 400 }));
+                                    }else{
+                                        //change password
+                                        resolve(NextResponse.json({ message: "Password changed" }, { status: 200 }));
+                                    }
+                                }
+                                //resolve(NextResponse.json({ message: 'user updated' }, { status: 200 }));
+                                }).catch(error => reject(error));
+                            break;
+                        case 'AddRoles':
+                        {
+                            const {subscriber_email, roles} = data;
+                            addRolesSubscriber(subscriber_email, roles).then(rtnResult => {
+                                if( rtnResult === 'undefined' || !rtnResult) {
+                                    console.error("Error: This shouldn't happen ");
+                                    reject(Error("Error: This shouldn't happen "));
+                                }else{
+                                    if(rtnResult.modifiedCount == 1){
+                                        resolve(NextResponse.json({ message: 'Roles updated', result: rtnResult }, { status: 200 }));
+                                    }else if(rtnResult.modifiedCount == 0){
+                                        resolve(NextResponse.json({ message: 'Failed to update the subscriber', result: rtnResult }, { status: 400 }));
+                                    }else{
+                                        resolve(NextResponse.json({ message: rtnResult.modifiedCount+' subscribers updated', result: rtnResult }, { status: 200 }));
+                                    }
+                                }
+                            }).catch(error => reject(error));
+                            resolve(NextResponse.json({ message: 'user updated' }, { status: 200 }));
+                            break;
+                        }
+                        case 'DeleteRoles':
+                        {
+                            const {subscriber_email, roles} = data;
+                            deleteRolesSubscriber(subscriber_email, roles).then(rtnResult => {
+                                if( rtnResult === 'undefined' || !rtnResult) {
+                                    console.error("Error: This shouldn't happen ");
+                                    reject(Error("Error: This shouldn't happen "));
+                                }else{
+                                    if(rtnResult.modifiedCount == 1){
+                                        resolve(NextResponse.json({ message: 'Roles updated', result: rtnResult }, { status: 200 }));
+                                    }else if(rtnResult.modifiedCount == 0){
+                                        resolve(NextResponse.json({ message: 'Failed to update the subscriber', result: rtnResult }, { status: 400 }));
+                                    }else{
+                                        resolve(NextResponse.json({ message: rtnResult.modifiedCount+' subscribers updated', result: rtnResult }, { status: 200 }));
+                                    }
+                                }
+                            }).catch(error => reject(error));
+                            resolve(NextResponse.json({ message: 'user updated' }, { status: 200 }));
+                            break;
+                        }
+
+                    }
+                }).catch(error =>{
+                    reject(error);
+                });
+            });
+            //return NextResponse.json({ message: 'user updated' }, { status: 200 });
+        }else{
+            return NextResponse.json({ message: 'Unauthorised' }, { status: 401 });
+        }
+
+    }catch(error) {
+        console.error("PATCH: error while updating user: ", error);
+        return NextResponse.json({ error: 'failed to update user' }, { status: 500 });
     }
 }

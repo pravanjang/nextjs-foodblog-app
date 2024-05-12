@@ -5,6 +5,7 @@ const username = encodeURIComponent("fbadmin");
 const password = encodeURIComponent("my_password");
 const clusterUrl = process.env.MONGODB_URI || 'localhost:27017';
 const dbName = "foodblogdb";
+
 const salt: string = "1234567890";
 
 //const authMechanism = "DEFAULT";
@@ -131,6 +132,43 @@ export async function deleteSubscriber(subscriberid: string): Promise<any> {
     });
 }
 
+export async function addRolesSubscriber(emailid: string, roles: string[] ): Promise<any> {
+    try {
+        return await new Promise(async (resolve, reject) => {
+            client.connect().then(async (connectedClient) => {
+                const db = connectedClient.db(dbName);
+                const query = {email: emailid};
+                const result = await db.collection<Subscriber>(subscriberCOll).updateOne(query, {$push: {'authdetails.account_type': {$each: roles}}} , {upsert: false});
+                console.log("addRolesSubscriber:", result);
+                resolve(result);
+            }).catch(err =>{
+                reject(err);
+            }).catch(error => reject(error));
+        });
+    }catch(error) {
+        console.error("Error: ", error);
+        throw error;
+    }
+}
+
+export async function deleteRolesSubscriber(emailid: string, roles: string[] ): Promise<any> {
+    try {
+        return await new Promise(async (resolve, reject) => {
+            client.connect().then(async (connectedClient) => {
+                const db = connectedClient.db(dbName);
+                const query = {email: emailid};
+                const result = await db.collection<Subscriber>(subscriberCOll).updateOne(query, {$pull: {'authdetails.account_type': {$in: roles}}} );
+                resolve(result);
+            }).catch(err =>{
+                reject(err);
+            }).catch(error => reject(error));
+        });
+    }catch(error) {
+        console.error("Error: ", error);
+        throw error;
+    }
+}
+
 /*
 * This function updates document of the collection
 *
@@ -140,15 +178,16 @@ export async function deleteSubscriber(subscriberid: string): Promise<any> {
 * @return {Promise<number>} A promise which resolves to number of document updated
 *                               and rejects with error message in case of failure.
  */
-export async function modifySubscriber(subscriber: Subscriber): Promise<any> {
+/*export async function modifySubscriber(id: string, data: {}): Promise<any> {
     client.connect()
         .then(async connectedClient => {
             const db = connectedClient.db(dbName);
-            const query = {_id: new ObjectId(subscriber.id)};
+            let query;
+            query = {_id: new ObjectId(data.id)};
             const {
                 acknowledged,
                 modifiedCount
-            } = await db.collection(subscriberCOll).updateOne(query, {$set: subscriber});
+            } = await db.collection(subscriberCOll).updateOne(query, {$set: data});
             if (acknowledged && modifiedCount) {
                 return Promise.resolve({status: "success", modifiedCount: modifiedCount});
             } else {
@@ -161,7 +200,7 @@ export async function modifySubscriber(subscriber: Subscriber): Promise<any> {
         }).catch(error => {
         return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
     });
-}
+}*/
 
 /*
 * This function retrieves document from the collection
