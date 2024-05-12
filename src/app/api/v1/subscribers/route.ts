@@ -8,7 +8,7 @@ import {
 } from "@/lib/dbconnection";
 import {createJWT, verifyToken} from "@/lib/apptoken";
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
     try {
         return await new Promise((resolve, reject) => {
             getSubscribers(0, 50).then(subscribers => {
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
     try {
         const results: NextResponse = await new Promise( ( resolve, reject ) => {
                 request.json().then( (data: any) => {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: Request): Promise<NextResponse> {
     try{
         const authorization  = request.headers.get('authorization');
         if (!authorization) {
@@ -147,7 +147,6 @@ export async function PATCH(request: Request) {
                     reject(error);
                 });
             });
-            //return NextResponse.json({ message: 'user updated' }, { status: 200 });
         }else{
             return NextResponse.json({ message: 'Unauthorised' }, { status: 401 });
         }

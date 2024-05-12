@@ -1,8 +1,8 @@
 import {MongoClient, ObjectId} from 'mongodb';
 import * as crypto from "node:crypto";
 
-const username = encodeURIComponent("fbadmin");
-const password = encodeURIComponent("my_password");
+const username = encodeURIComponent( process.env.MONGO_USERNAME || "fbadmin");
+const password = encodeURIComponent( process.env.MONGO_PASSWORD || "my_password");
 const clusterUrl = process.env.MONGODB_URI || 'localhost:27017';
 const dbName = "foodblogdb";
 
