@@ -6,7 +6,7 @@ import {
     getSubscriber,
     getSubscribers
 } from "@/lib/dbconnection";
-import {createJWT, verifyToken} from "@/lib/apptoken";
+import { verifyToken} from "@/lib/apptoken";
 
 export async function GET(request: Request): Promise<NextResponse> {
     try {

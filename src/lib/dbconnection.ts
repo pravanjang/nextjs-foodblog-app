@@ -45,16 +45,16 @@ type Subscriber = {
 }
 
 type Blog = {
-    id?: string
-    blogname: string,
+    id?: string,
+    summary: string,
     title: string,
-    description: string,
+    pathid: string,
     image_url: string,
     bloggerId: string,
     bloggerName: string,
-    content?: string,
-    ratings: number
+    instructions: string,
     createdDate: Date,
+    lastUpdateTime?: Date,
 }
 
 /**********************************************************************************************************
@@ -194,39 +194,6 @@ export async function deleteRolesSubscriber(emailid: string, roles: string[] ): 
         throw error;
     }
 }
-
-/*
-* This function updates document of the collection
-*
-* @function
-* @async
-* @param {Subscriber} Subscriber - Object containing details of the subscriber
-* @return {Promise<number>} A promise which resolves to number of document updated
-*                               and rejects with error message in case of failure.
- */
-/*export async function modifySubscriber(id: string, data: {}): Promise<any> {
-    client.connect()
-        .then(async connectedClient => {
-            const db = connectedClient.db(dbName);
-            let query;
-            query = {_id: new ObjectId(data.id)};
-            const {
-                acknowledged,
-                modifiedCount
-            } = await db.collection(subscriberCOll).updateOne(query, {$set: data});
-            if (acknowledged && modifiedCount) {
-                return Promise.resolve({status: "success", modifiedCount: modifiedCount});
-            } else {
-                return Promise.reject({
-                    status: "error",
-                    error: "Updation Error",
-                    logmessage: "Failed to update subscription"
-                });
-            }
-        }).catch(error => {
-        return Promise.reject({status: "error", error: error, logmessage: "Failed to connect database"});
-    });
-}*/
 
 /*
 * This function retrieves document from the collection
